@@ -7,6 +7,9 @@ const (
 	CreateMethodEnumQuery = `
 	create type stahl_method_enum as enum('INSERT', 'UPDATE', 'DELETE')
 `
+)
+
+const (
 	CreateTableMetaDataTableQuery = `
 	create table %s (
 	    table_name text primary key, 
@@ -27,5 +30,36 @@ const (
 		%s on %s (
 			created_at
     );
+`
+	DropTriggerQuery = `
+	drop trigger if exists %s on %s
+`
+	DropProcedureQuery = `
+	drop procedure if exists %s
+`
+	DropTableQuery = `
+	drop table if exists %s
+`
+)
+
+const (
+	CreateCommonTriggerProcedureQuery = `
+	create or replace function %s() returns trigger as $%s_changelog_audit$
+    begin 
+        if (tg_op = 'DELETE') then
+            insert into %s (method, created_at, data) VALUES (TG_OP::stahl_method_enum, now(), row_to_json(OLD));
+            return OLD;
+        else
+            insert into %s (method, created_at, data) VALUES (TG_OP::stahl_method_enum, now(), row_to_json(NEW));
+            return OLD;
+        end if;
+    end;
+    $%s_changelog_audit$ LANGUAGE plpgsql
+`
+
+	CreateTriggerForReplicaTableQuery = `
+	create or replace trigger %s
+    after insert or update or delete on %s
+    for each row execute procedure %s();
 `
 )

@@ -1,11 +1,10 @@
 package utils
 
 import (
-	"strings"
-
-	"github.com/google/uuid"
+	"strconv"
+	"time"
 )
 
-func NewUuidWoDashes() string {
-	return strings.Replace(uuid.New().String(), "-", "", -1)
+func TimestampToString(time time.Time) string {
+	return strconv.Itoa(int(time.UnixNano()))
 }

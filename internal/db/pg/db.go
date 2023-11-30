@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -29,7 +30,7 @@ func GetPostgresConnector(ctx context.Context, cfg *PostgresConfig) (*sql.DB, er
 		cfg.Host,
 		strconv.FormatUint(uint64(cfg.Port), 10))
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +45,10 @@ func GetPostgresConnector(ctx context.Context, cfg *PostgresConfig) (*sql.DB, er
 
 func GetSqlxConnector(db *sql.DB, driverName string) *sqlx.DB {
 	return sqlx.NewDb(db, driverName)
+}
+
+func GetSqlxConnectorPgxDriver(db *sql.DB) *sqlx.DB {
+	return sqlx.NewDb(db, "pgx")
 }
 
 func pingDbWithRetry(ctx context.Context, db *sql.DB, timeout, period time.Duration) error {

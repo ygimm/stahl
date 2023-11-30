@@ -2,15 +2,13 @@ package schema
 
 import (
 	"context"
-	"errors"
 	"stahl/internal/config"
 )
 
 type ISchemaGenerator interface {
-	Generate(ctx context.Context) error
+	GenerateSchema(ctx context.Context) error
+	GenerateTriggers(ctx context.Context) error
+	Start(ctx context.Context) error
+	Drop() error
 	GetConfig() config.SchemaConfig
 }
-
-var (
-	ErrorTablesDoMatchWithSchema = errors.New("provided table names do not match with tables in actual schema")
-)
