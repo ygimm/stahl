@@ -11,24 +11,38 @@ import (
 )
 
 type WorkerManager struct {
-	transfer worker.ITaskTransfer
-	errChan  chan error
-	storage  store.IStorage
-	output   output.IOutput
+	transfer    worker.ITaskTransfer
+	errChan     chan error
+	storage     store.IStorage
+	output      output.IOutput
+	schemaCfg   config.SchemaConfig
+	producerCfg config.ProducerConfig
+	consumerCfg config.ConsumerConfig
 }
 
-func NewWorkerManager(transfer worker.ITaskTransfer, storage store.IStorage, output output.IOutput) *WorkerManager {
-	return &WorkerManager{transfer: transfer, storage: storage, output: output}
+func NewWorkerManager(
+	transfer worker.ITaskTransfer,
+	storage store.IStorage,
+	output output.IOutput,
+	sCfg config.SchemaConfig,
+	pCfg config.ProducerConfig,
+	cCfg config.ConsumerConfig,
+) *WorkerManager {
+	return &WorkerManager{
+		transfer:    transfer,
+		storage:     storage,
+		output:      output,
+		schemaCfg:   sCfg,
+		producerCfg: pCfg,
+		consumerCfg: cCfg,
+	}
 }
 
 func (w *WorkerManager) Start(
-	ctx context.Context,
-	sCfg config.SchemaConfig,
-	pCfg config.ProducerConfig,
-	cCfg config.ConsumerConfig) <-chan error {
+	ctx context.Context) <-chan error {
 	w.errChan = make(chan error)
 	go func() {
-		err := w.StartProducers(ctx, sCfg, pCfg)
+		err := w.StartProducers(ctx)
 		if err != nil {
 			select {
 			case <-ctx.Done():
@@ -39,7 +53,7 @@ func (w *WorkerManager) Start(
 		}
 	}()
 	go func() {
-		err := w.StartConsumers(ctx, sCfg, cCfg)
+		err := w.StartConsumers(ctx)
 		if err != nil {
 			select {
 			case <-ctx.Done():
@@ -52,10 +66,10 @@ func (w *WorkerManager) Start(
 	return w.errChan
 }
 
-func (w *WorkerManager) StartProducers(ctx context.Context, config config.SchemaConfig, wCfg config.ProducerConfig) error {
-	for original, replica := range config.ChangelogTableNames {
+func (w *WorkerManager) StartProducers(ctx context.Context) error {
+	for original, replica := range w.schemaCfg.ChangelogTableNames {
 		go func(original, replica string) {
-			p := producer.New(w.transfer, w.storage, ctx, wCfg, original, replica, config.ReplicationStatusTableName)
+			p := producer.New(w.transfer, w.storage, ctx, w.producerCfg, original, replica, w.schemaCfg.ReplicationStatusTableName)
 			err := p.Run()
 			if err != nil {
 				select {
@@ -70,10 +84,10 @@ func (w *WorkerManager) StartProducers(ctx context.Context, config config.Schema
 	return nil
 }
 
-func (w *WorkerManager) StartConsumers(ctx context.Context, sCfg config.SchemaConfig, cCfg config.ConsumerConfig) error {
-	for original, replica := range sCfg.ChangelogTableNames {
+func (w *WorkerManager) StartConsumers(ctx context.Context) error {
+	for original, replica := range w.schemaCfg.ChangelogTableNames {
 		go func(original, replica string) {
-			c := consumer.New(ctx, cCfg, w.transfer, original, replica, w.storage, w.output)
+			c := consumer.New(ctx, w.consumerCfg, w.transfer, original, replica, w.storage, w.output)
 			err := c.Run()
 			if err != nil {
 				select {

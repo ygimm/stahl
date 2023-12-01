@@ -18,6 +18,7 @@ const (
 	replicationStatusTableNameTemplate = "replication_status_%s"
 	procedureNameTemplate              = "%s_changelog_proc"
 	triggerNameTemplate                = "%s_changelog_stahl_trigger"
+	dlqTableNameTemplate               = "dead_messages_%s"
 )
 
 type SchemaGenerator struct {
@@ -60,6 +61,13 @@ func (s *SchemaGenerator) GenerateSchema(ctx context.Context) error {
 			return err
 		}
 		replStatTable, err := s.generateReplicationStatusTableAndMethodsEnumTx(ctx, tx)
+		if err != nil {
+			return err
+		}
+		domain.DlqTableName, err = s.generateDlqTableTx(ctx, tx)
+		if err != nil {
+			return err
+		}
 		if err != nil {
 			return err
 		}
@@ -133,7 +141,7 @@ func (s *SchemaGenerator) generateChangelogTableTableTx(ctx context.Context, tab
 	if err != nil {
 		return "", fmt.Errorf("generate sql for insert into replica status error: %w", err)
 	}
-	
+
 	_, err = tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return "", fmt.Errorf("insert changelog tablenames error: %w", err)
@@ -161,6 +169,10 @@ func (s *SchemaGenerator) Drop() error {
 			}
 		}
 		_, err := tx.ExecContext(ctx, fmt.Sprintf(DropTableQuery, s.config.ReplicationStatusTableName))
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, fmt.Sprintf(DropTableQuery, domain.DlqTableName))
 		if err != nil {
 			return err
 		}
@@ -210,4 +222,13 @@ func (s *SchemaGenerator) generateTriggersTx(ctx context.Context, tx *sqlx.Tx) e
 		}
 	}
 	return nil
+}
+
+func (s *SchemaGenerator) generateDlqTableTx(ctx context.Context, tx *sqlx.Tx) (string, error) {
+	dlqTable := fmt.Sprintf(dlqTableNameTemplate, utils.TimestampToString(s.config.CreationTime))
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(CreateDlqTableQuery, dlqTable))
+	if err != nil {
+		return "", fmt.Errorf("createDlqTableQuery: %w", err)
+	}
+	return dlqTable, nil
 }

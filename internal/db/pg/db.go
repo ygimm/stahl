@@ -12,6 +12,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	defaultTimeout = 10 * time.Second
+	defaultPeriod  = 1 * time.Second
+)
+
 type PostgresConfig struct {
 	Host        string `yaml:"host"`
 	Port        uint16 `yaml:"port"`
@@ -43,15 +48,17 @@ func GetPostgresConnector(ctx context.Context, cfg *PostgresConfig) (*sql.DB, er
 	return db, nil
 }
 
-func GetSqlxConnector(db *sql.DB, driverName string) *sqlx.DB {
-	return sqlx.NewDb(db, driverName)
-}
-
 func GetSqlxConnectorPgxDriver(db *sql.DB) *sqlx.DB {
 	return sqlx.NewDb(db, "pgx")
 }
 
 func pingDbWithRetry(ctx context.Context, db *sql.DB, timeout, period time.Duration) error {
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
+	if period == 0 {
+		period = defaultPeriod
+	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

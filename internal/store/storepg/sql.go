@@ -3,7 +3,7 @@ package storepg
 var (
 	PushDlqQuery = `
 	insert into $1
-	    (origin_table, payload, error)
+	    (origin_table, payload, origin_error)
 	values 
 		($2, $3, $4)
 	`

@@ -1,0 +1,40 @@
+# configuration for drivers
+drivers:
+  # host database driver config
+  db:
+    driver_name: "postgresql" # "postgres" / "pg" / "postgre"
+    host: "localhost"
+    port: 6000
+    user: "postgres"
+    password: "postgres"
+    database: "postgres"
+    ping_timeout: 10s
+    ping_period: 1s
+
+  # output chanel for events config
+  output:
+    driver_name: "kafka"
+    table_channel:
+      users: "user_events"
+      # do not override orders
+      # need to create topics: user_events, orders
+    brokers: ["localhost:9092"]
+
+
+schema:
+  tables: ["users", "orders"]
+  # set replication on
+  # tables "users", "orders"
+
+# common configuration for all producer modules
+producer:
+  period: 5s
+  stop_on_error: true
+  enable_dlq: false
+
+# common configuration for all consumer modules
+consumer:
+  max_tasks_wait: 5s
+  max_tasks_batch: 5
+  stop_on_error: true
+  enable_dlq: false

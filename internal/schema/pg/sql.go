@@ -31,6 +31,14 @@ const (
 			created_at
     );
 `
+	CreateDlqTableQuery = `
+	create table %s (
+	    id serial primary key,
+	    origin_table text not null, 
+	    payload jsonb,
+	    origin_error text
+	)
+`
 	DropTriggerQuery = `
 	drop trigger if exists %s on %s
 `

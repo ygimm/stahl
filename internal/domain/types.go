@@ -12,3 +12,13 @@ var DriverNameToType = map[string]GeneratorDriverType{
 	"postgresql": Postgres,
 	"postgre":    Postgres,
 }
+
+type OutputDriverType int
+
+const (
+	Kafka = 1
+)
+
+var OutDriverNameToType = map[string]OutputDriverType{
+	"kafka": Kafka,
+}
