@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"stahl/internal/config"
+	"stahl/internal/metrics"
 	"stahl/internal/output"
 	"stahl/internal/store"
 	"stahl/internal/worker"
@@ -15,6 +16,7 @@ type WorkerManager struct {
 	errChan     chan error
 	storage     store.IStorage
 	output      output.IOutput
+	metrics     metrics.IMetrics
 	schemaCfg   config.SchemaConfig
 	producerCfg config.ProducerConfig
 	consumerCfg config.ConsumerConfig
@@ -24,6 +26,7 @@ func NewWorkerManager(
 	transfer worker.ITaskTransfer,
 	storage store.IStorage,
 	output output.IOutput,
+	metrics metrics.IMetrics,
 	sCfg config.SchemaConfig,
 	pCfg config.ProducerConfig,
 	cCfg config.ConsumerConfig,
@@ -32,6 +35,7 @@ func NewWorkerManager(
 		transfer:    transfer,
 		storage:     storage,
 		output:      output,
+		metrics:     metrics,
 		schemaCfg:   sCfg,
 		producerCfg: pCfg,
 		consumerCfg: cCfg,
@@ -69,7 +73,15 @@ func (w *WorkerManager) Start(
 func (w *WorkerManager) StartProducers(ctx context.Context) error {
 	for original, replica := range w.schemaCfg.ChangelogTableNames {
 		go func(original, replica string) {
-			p := producer.New(w.transfer, w.storage, ctx, w.producerCfg, original, replica, w.schemaCfg.ReplicationStatusTableName)
+			pDeps := producer.Deps{
+				Storage:         w.storage,
+				Transfer:        w.transfer,
+				Cfg:             w.producerCfg,
+				TaskChannelName: original,
+				TableName:       replica,
+				StatusTable:     w.schemaCfg.ReplicationStatusTableName,
+			}
+			p := producer.New(ctx, pDeps)
 			err := p.Run()
 			if err != nil {
 				select {
@@ -87,7 +99,16 @@ func (w *WorkerManager) StartProducers(ctx context.Context) error {
 func (w *WorkerManager) StartConsumers(ctx context.Context) error {
 	for original, replica := range w.schemaCfg.ChangelogTableNames {
 		go func(original, replica string) {
-			c := consumer.New(ctx, w.consumerCfg, w.transfer, original, replica, w.storage, w.output)
+			cDeps := consumer.Deps{
+				Storage:      w.storage,
+				OutSrv:       w.output,
+				TransferSrv:  w.transfer,
+				MetricsSrv:   w.metrics,
+				Cfg:          w.consumerCfg,
+				OrigTable:    original,
+				ReplicaTable: replica,
+			}
+			c := consumer.New(ctx, cDeps)
 			err := c.Run()
 			if err != nil {
 				select {

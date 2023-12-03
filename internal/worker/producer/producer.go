@@ -2,7 +2,6 @@ package producer
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"stahl/internal/config"
 	"stahl/internal/domain"
@@ -24,15 +23,24 @@ type ChangesProducer struct {
 	statusTableName string
 }
 
-func New(transfer worker.ITaskInputTransfer, storage store.IProducerStorage, glCtx context.Context, cfg config.ProducerConfig, taskChannelName, tableName, statusTable string) worker.IChangesProducer {
+type Deps struct {
+	Storage         store.IProducerStorage
+	Transfer        worker.ITaskInputTransfer
+	Cfg             config.ProducerConfig
+	TaskChannelName string
+	TableName       string
+	StatusTable     string
+}
+
+func New(ctx context.Context, deps Deps) worker.IChangesProducer {
 	return &ChangesProducer{
-		transfer:        transfer,
-		storage:         storage,
-		glCtx:           glCtx,
-		cfg:             cfg,
-		taskChannelName: taskChannelName,
-		tableName:       tableName,
-		statusTableName: statusTable,
+		transfer:        deps.Transfer,
+		storage:         deps.Storage,
+		glCtx:           ctx,
+		cfg:             deps.Cfg,
+		taskChannelName: deps.TaskChannelName,
+		tableName:       deps.TableName,
+		statusTableName: deps.StatusTable,
 	}
 }
 
@@ -41,10 +49,9 @@ func (c *ChangesProducer) Run() error {
 	for {
 		select {
 		case <-c.glCtx.Done():
-			fmt.Println("[PRODUCER CTX DONE]")
+			log.Default().Printf("[PRODUCER %s CTX DONE]", c.tableName)
 			return nil
 		case <-c.timer.C:
-			fmt.Println("[PRODUCER TIMEOUT]")
 			ids, err := c.GetMessages(c.glCtx)
 			if err != nil {
 				log.Default().Printf("storage.GetEventsIdsForTable table %s: %v\n", c.tableName, err)

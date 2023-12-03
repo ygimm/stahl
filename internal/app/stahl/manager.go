@@ -6,6 +6,7 @@ import (
 	"log"
 	"stahl/internal/config"
 	"stahl/internal/domain"
+	"stahl/internal/metrics"
 	"stahl/internal/output"
 	"stahl/internal/output/console"
 	"stahl/internal/output/kafka"
@@ -23,13 +24,14 @@ func GetManager(cfg config.Summary) (worker.IManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	o, err := getOutput(cfg.Drivers.Output)
+	m := metrics.New()
+	o, err := getOutput(cfg.Drivers.Output, m)
 	if err != nil {
 		return nil, err
 	}
 	t := transfer.NewTaskTransfer(cfg.Schema.TableNames)
-	m := manager.NewWorkerManager(t, s, o, cfg.Schema, cfg.Producer, cfg.Consumer)
-	return m, nil
+	mng := manager.NewWorkerManager(t, s, o, m, cfg.Schema, cfg.Producer, cfg.Consumer)
+	return mng, nil
 }
 
 func getStorage(cfg config.DatabaseConfig) (store.IStorage, error) {
@@ -51,7 +53,7 @@ func getStorage(cfg config.DatabaseConfig) (store.IStorage, error) {
 	return s, nil
 }
 
-func getOutput(cfg config.OutputConfig) (output.IOutput, error) {
+func getOutput(cfg config.OutputConfig, metricsSrv metrics.IMetrics) (output.IOutput, error) {
 	outType := domain.OutDriverNameToType[cfg.DriverName]
 	var o output.IOutput
 	switch outType {
@@ -62,7 +64,8 @@ func getOutput(cfg config.OutputConfig) (output.IOutput, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sarama.NewSyncProducer: %w", err)
 		}
-		o = kafka.NewOutput(producer, cfg)
+		metricsSrv.RegisterNew(producerCfg.MetricRegistry)
+		o = kafka.NewOutput(producer, cfg, metricsSrv)
 	default:
 		log.Default().Println("[CONFIGURATION OF DUMMY CONSOLE OUTPUT]")
 		o = console.NewDummyConsoleOutput(cfg)

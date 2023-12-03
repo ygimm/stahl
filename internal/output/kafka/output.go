@@ -6,20 +6,23 @@ import (
 	"fmt"
 	"stahl/internal/config"
 	"stahl/internal/domain"
+	"stahl/internal/metrics"
 
 	"github.com/Shopify/sarama"
 	"github.com/google/uuid"
 )
 
 type Output struct {
-	producer sarama.SyncProducer
-	cfg      config.OutputConfig
+	producer   sarama.SyncProducer
+	cfg        config.OutputConfig
+	metricsSrv metrics.IMetrics
 }
 
-func NewOutput(producer sarama.SyncProducer, cfg config.OutputConfig) *Output {
+func NewOutput(producer sarama.SyncProducer, cfg config.OutputConfig, metricsSrv metrics.IMetrics) *Output {
 	return &Output{
-		producer: producer,
-		cfg:      cfg,
+		producer:   producer,
+		cfg:        cfg,
+		metricsSrv: metricsSrv,
 	}
 }
 
@@ -41,5 +44,6 @@ func (o *Output) PushEvent(ctx context.Context, event domain.BaseEvent, chanelNa
 	if err != nil {
 		return fmt.Errorf("o.producer.SendMessage: %w", err)
 	}
+	o.metricsSrv.SuccessPushEvent(chanelName)
 	return nil
 }

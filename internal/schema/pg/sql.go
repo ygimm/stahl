@@ -21,7 +21,6 @@ const (
 	    id serial primary key,
 		method stahl_method_enum not null ,
 	    created_at timestamp default now(),
-	    updated_at timestamp,
 	    data jsonb not null default '{}'
 	)
 `

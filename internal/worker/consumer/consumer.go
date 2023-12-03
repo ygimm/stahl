@@ -5,6 +5,7 @@ import (
 	"log"
 	"stahl/internal/config"
 	"stahl/internal/domain"
+	"stahl/internal/metrics"
 	"stahl/internal/output"
 	"stahl/internal/store"
 	"stahl/internal/worker"
@@ -20,6 +21,7 @@ type ChangesConsumer struct {
 	storage  store.IConsumerStorage
 	outSrv   output.IOutput
 	transfer worker.ITaskOutputTransfer
+	metrics  metrics.IMetrics
 
 	cfg            config.ConsumerConfig
 	inChannelName  string
@@ -31,26 +33,38 @@ type ChangesConsumer struct {
 	timer *time.Timer
 }
 
-func New(ctx context.Context, cfg config.ConsumerConfig, transfer worker.ITaskOutputTransfer, origTable, replicaTable string, storage store.IConsumerStorage, outSrv output.IOutput) worker.IChangesConsumer {
-	if cfg.MaxBatchWait == 0 {
-		cfg.MaxBatchWait = defaultMaxWaitTime
+type Deps struct {
+	Storage     store.IConsumerStorage
+	OutSrv      output.IOutput
+	TransferSrv worker.ITaskOutputTransfer
+	MetricsSrv  metrics.IMetrics
+
+	Cfg          config.ConsumerConfig
+	OrigTable    string
+	ReplicaTable string
+}
+
+func New(ctx context.Context, deps Deps) worker.IChangesConsumer {
+	if deps.Cfg.MaxBatchWait == 0 {
+		deps.Cfg.MaxBatchWait = defaultMaxWaitTime
 	}
-	if cfg.MaxTasksBatch == 0 {
-		cfg.MaxTasksBatch = defaultMaxTasksBatch
+	if deps.Cfg.MaxTasksBatch == 0 {
+		deps.Cfg.MaxTasksBatch = defaultMaxTasksBatch
 	}
 	return &ChangesConsumer{
-		storage:  storage,
-		outSrv:   outSrv,
-		transfer: transfer,
+		storage:  deps.Storage,
+		outSrv:   deps.OutSrv,
+		transfer: deps.TransferSrv,
+		metrics:  deps.MetricsSrv,
 
-		inChannelName:  origTable,
-		outChannelName: origTable,
-		tableName:      replicaTable,
-		cfg:            cfg,
+		inChannelName:  deps.OrigTable,
+		outChannelName: deps.OrigTable,
+		tableName:      deps.ReplicaTable,
+		cfg:            deps.Cfg,
 
 		glCtx: ctx,
-		tasks: make([]domain.Task, 0, cfg.MaxTasksBatch),
-		timer: time.NewTimer(cfg.MaxBatchWait),
+		tasks: make([]domain.Task, 0, deps.Cfg.MaxTasksBatch),
+		timer: time.NewTimer(deps.Cfg.MaxBatchWait),
 	}
 }
 

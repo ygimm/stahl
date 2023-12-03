@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"stahl/internal/app/stahl"
 	"stahl/internal/config"
 	"syscall"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -43,16 +46,27 @@ func main() {
 	runCtx, cancel := context.WithCancel(ctx)
 	errCh := m.Start(runCtx)
 
+	//mhandler := exp.ExpHandler(metrics.DefaultRegistry)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":8090", nil)
+		if err != nil {
+			cancel()
+			return
+		}
+
+	}()
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	select {
+	case <-runCtx.Done():
+		log.Default().Println("[SHUTDOWN] with context done")
 	case err := <-errCh:
 		cancel()
-		fmt.Println("shutdown with an error: ", err)
+		log.Default().Println("[SHUTDOWN] with an error: ", err)
 	case <-exit:
 		cancel()
-		fmt.Println("shutdown by sigterm")
+		log.Default().Println("\n[SHUTDOWN] by sigterm")
 	}
-
 }
