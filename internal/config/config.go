@@ -11,8 +11,10 @@ import (
 func ParseConfig() (Summary, error) {
 	var cfg Summary
 
+	data, err := os.ReadFile("/stahl/.stahl/config/config.example.yml")
+	
 	//data, err := os.ReadFile("./stahl/config/config.example.yaml")
-	data, err := os.ReadFile("/Users/elarkin/Documents/GitHub/stahl/.stahl/config/config.example.yml")
+	//data, err := os.ReadFile("/Users/elarkin/Documents/GitHub/stahl/.stahl/config/config.example.yml")
 	if err != nil {
 		return cfg, fmt.Errorf("os.ReadFile: %w", err)
 	}
@@ -31,7 +33,12 @@ type Summary struct {
 		Output OutputConfig   `yaml:"output"`
 	} `yaml:"drivers"`
 	Consumer ConsumerConfig `yaml:"consumer"`
+	Service  ServiceConfig  `yaml:"service"`
 	Schema   SchemaConfig   `yaml:"-"`
+}
+
+type ServiceConfig struct {
+	MetricsPort uint16 `yaml:"metrics_port"`
 }
 
 type SchemaConfig struct {

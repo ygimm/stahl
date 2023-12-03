@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"stahl/internal/config"
-	pgx "stahl/internal/db/pg"
 	"stahl/internal/domain"
 	"stahl/internal/schema"
 	"stahl/internal/schema/pg"
-	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func GetSchemaGeneratorByDriverName(ctx context.Context, name string, tableNames config.UserSchemaConfig) (schema.ISchemaGenerator, error) {
-	if len(tableNames.TableNames) == 0 {
+func GetSchemaGeneratorByDriverName(ctx context.Context, name string, cfg config.Summary) (schema.ISchemaGenerator, error) {
+	if len(cfg.UserSchema.TableNames) == 0 {
 		return nil, domain.ErrorNoTablesSpecified
 	}
 	driver, ok := domain.DriverNameToType[name]
@@ -21,31 +21,17 @@ func GetSchemaGeneratorByDriverName(ctx context.Context, name string, tableNames
 	}
 	switch driver {
 	case domain.Postgres:
-		//todo parse cfg
-		cfg := &pgx.PostgresConfig{
-			Host:        "localhost",
-			Port:        6000,
-			Database:    "postgres",
-			User:        "postgres",
-			Password:    "postgres",
-			PingTimeout: 5 * time.Second,
-			PingPeriod:  1 * time.Second,
+		db, err := BootstrapPostgres(ctx, cfg.Drivers.Db)
+		if err != nil {
+			return nil, fmt.Errorf("BootstrapPostgres: %w", err)
 		}
-		sCfg := config.SchemaConfig{TableNames: tableNames.TableNames, ChangelogTableNames: make(map[string]string)}
-		return bootstrapPostgresGenerator(ctx, sCfg, cfg)
+		sCfg := config.SchemaConfig{TableNames: cfg.UserSchema.TableNames, ChangelogTableNames: make(map[string]string)}
+		return bootstrapPostgresGenerator(ctx, sCfg, db)
 	default:
 		return nil, domain.ErrorUnknownDriverName
 	}
 }
 
-func bootstrapPostgresGenerator(ctx context.Context, schemaCfg config.SchemaConfig, dbCfg *pgx.PostgresConfig) (schema.ISchemaGenerator, error) {
-	pgconn, err := pgx.GetPostgresConnector(ctx, dbCfg)
-	if err != nil {
-		return nil, fmt.Errorf("GetPostgresConnector: %w", err)
-	}
-	db := pgx.GetSqlxConnectorPgxDriver(pgconn)
-	if db == nil {
-		return nil, fmt.Errorf("GetSqlxConnectorPgxDriver: %w", err)
-	}
+func bootstrapPostgresGenerator(ctx context.Context, schemaCfg config.SchemaConfig, db *sqlx.DB) (schema.ISchemaGenerator, error) {
 	return pg.NewSchemaGenerator(db, schemaCfg), nil
 }

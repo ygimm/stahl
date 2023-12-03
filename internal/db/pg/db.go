@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -22,7 +23,7 @@ type PostgresConfig struct {
 	Port        uint16 `yaml:"port"`
 	Database    string `yaml:"database"`
 	User        string `yaml:"user"`
-	Password    string `yaml:"-"`
+	Password    string `yaml:"password"`
 	PingTimeout time.Duration
 	PingPeriod  time.Duration
 }
@@ -68,7 +69,8 @@ func pingDbWithRetry(ctx context.Context, db *sql.DB, timeout, period time.Durat
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(period):
-			err = db.Ping()
+			err = db.PingContext(ctx)
+			log.Default().Println("db.PingContext: ", err)
 		}
 	}
 	return nil

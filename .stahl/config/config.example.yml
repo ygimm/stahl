@@ -1,10 +1,14 @@
+#serivce configurations
+service:
+  metrics_port: 8000
+
 # configuration for drivers
 drivers:
   # host database driver config
   db:
     driver_name: "postgresql" # "postgres" / "pg" / "postgre"
-    host: "localhost"
-    port: 6000
+    host: "postgres"
+    port: 5432
     user: "postgres"
     password: "postgres"
     database: "postgres"
@@ -18,7 +22,7 @@ drivers:
       users: "user_events"
       # do not override orders
       # need to create topics: user_events, orders
-    brokers: ["localhost:9092"]
+    brokers: ["host.docker.internal:9092"]
 
 
 schema:

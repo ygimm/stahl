@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"stahl/internal/app/stahl"
 	"stahl/internal/config"
+	"strconv"
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	generator, err := stahl.GetSchemaGeneratorByDriverName(ctx, "pg", cfg.UserSchema)
+	generator, err := stahl.GetSchemaGeneratorByDriverName(ctx, "pg", cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,16 +47,17 @@ func main() {
 	runCtx, cancel := context.WithCancel(ctx)
 	errCh := m.Start(runCtx)
 
-	//mhandler := exp.ExpHandler(metrics.DefaultRegistry)
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":8090", nil)
+		err := http.ListenAndServe(
+			":"+strconv.Itoa(int(cfg.Service.MetricsPort)),
+			nil)
 		if err != nil {
 			cancel()
 			return
 		}
-
 	}()
+
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
