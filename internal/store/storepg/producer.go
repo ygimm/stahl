@@ -3,6 +3,7 @@ package storepg
 import (
 	"context"
 	"fmt"
+	"log"
 	"stahl/internal/schema/pg"
 
 	"github.com/jmoiron/sqlx"
@@ -11,7 +12,9 @@ import (
 func (s *Storage) GetEventsIdsForTable(ctx context.Context, table, statusTable string) ([]int64, error) {
 	var res []int64
 	err := pg.WithTx(ctx, s.db, func(ctx context.Context, tx *sqlx.Tx) error {
-		rows, err := tx.QueryxContext(ctx, fmt.Sprintf(GetIdsQuery, table, statusTable), table)
+		query := fmt.Sprintf(GetIdsQuery, table, statusTable)
+		log.Default().Printf("query: %s", query)
+		rows, err := tx.QueryxContext(ctx, query, table)
 		if err != nil {
 			return fmt.Errorf("select ids error: %w", err)
 		}

@@ -60,6 +60,7 @@ func getOutput(cfg config.OutputConfig, metricsSrv metrics.IMetrics) (output.IOu
 	case domain.Kafka:
 		producerCfg := sarama.NewConfig()
 		producerCfg.Producer.Return.Successes = true
+		log.Default().Printf("[CONFIGURATION OF KAFKA OUTPUT] %v", cfg.Brokers)
 		producer, err := sarama.NewSyncProducer(cfg.Brokers, producerCfg)
 		if err != nil {
 			return nil, fmt.Errorf("sarama.NewSyncProducer: %w", err)

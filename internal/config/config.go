@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -10,18 +11,49 @@ import (
 
 func ParseConfig() (Summary, error) {
 	var cfg Summary
+	var err error
+	var data []byte
 
-	data, err := os.ReadFile("/stahl/.stahl/config/config.example.yml")
-	
-	//data, err := os.ReadFile("./stahl/config/config.example.yaml")
-	//data, err := os.ReadFile("/Users/elarkin/Documents/GitHub/stahl/.stahl/config/config.example.yml")
-	if err != nil {
-		return cfg, fmt.Errorf("os.ReadFile: %w", err)
+	configPaths := []string{
+		"/app/config/config.yml",
+		"/app/config/config.example.yml",
+		"./.stahl/config/config.yml",
+		"./.stahl/config/config.example.yml",
 	}
+
+	// Попытка загрузить конфигурацию из всех возможных путей
+	for _, path := range configPaths {
+		log.Printf("Trying to load config from: %s", path)
+		data, err = os.ReadFile(path)
+		if err == nil {
+			log.Printf("Successfully loaded config from: %s", path)
+			break
+		}
+		log.Printf("Failed to load config from %s: %v", path, err)
+	}
+
+	if err != nil {
+		return cfg, fmt.Errorf("failed to load config from any path: %w", err)
+	}
+
+	// Проверка переменных окружения на наличие переопределений для брокера Kafka
+	if kafkaBrokers := os.Getenv("KAFKA_BROKERS"); kafkaBrokers != "" {
+		log.Printf("Found KAFKA_BROKERS environment variable: %s", kafkaBrokers)
+	}
+
 	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
 		return cfg, fmt.Errorf("yaml.Unmarshal: %w", err)
 	}
+
+	// Если есть переменная окружения KAFKA_BROKERS, она имеет приоритет над конфигурационным файлом
+	if kafkaBrokers := os.Getenv("KAFKA_BROKERS"); kafkaBrokers != "" {
+		cfg.Drivers.Output.Brokers = []string{kafkaBrokers}
+		log.Printf("Using Kafka brokers from environment: %v", cfg.Drivers.Output.Brokers)
+	} else {
+		log.Printf("Using Kafka brokers from config file: %v", cfg.Drivers.Output.Brokers)
+	}
+
 	return cfg, nil
 }
 

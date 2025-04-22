@@ -232,3 +232,8 @@ func (s *SchemaGenerator) generateDlqTableTx(ctx context.Context, tx *sqlx.Tx) (
 	}
 	return dlqTable, nil
 }
+
+// GetDB returns the database connection
+func (s *SchemaGenerator) GetDB() *sqlx.DB {
+	return s.db
+}

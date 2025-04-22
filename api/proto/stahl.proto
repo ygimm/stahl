@@ -1,0 +1,255 @@
+syntax = "proto3";
+
+package stahl.api.v1;
+
+option go_package = "stahl/api/v1;apiv1";
+
+// Стандартные импорты protobuf
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "Stahl API";
+    version: "1.0";
+    description: "API для управления конфигурацией системы Change Data Capture Stahl";
+    contact: {
+      name: "Stahl Support";
+      url: "https://github.com/your-org/stahl";
+    };
+  };
+};
+
+// Сервис ConfigurationService предоставляет методы для управления конфигурацией Stahl
+service ConfigurationService {
+  // GetConfig возвращает текущую конфигурацию системы
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/config"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить текущую конфигурацию"
+      description: "Возвращает текущую конфигурацию системы Stahl"
+      tags: "config"
+    };
+  }
+
+  // UpdateConfig обновляет конфигурацию системы
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/config"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Обновить конфигурацию"
+      description: "Обновляет полную конфигурацию системы Stahl"
+      tags: "config"
+    };
+  }
+
+  // AddTable добавляет новую таблицу для репликации
+  rpc AddTable(AddTableRequest) returns (AddTableResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/tables"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Добавить таблицу для репликации"
+      description: "Добавляет новую таблицу в список реплицируемых таблиц"
+      tags: "tables"
+    };
+  }
+
+  // RemoveTable удаляет таблицу из репликации
+  rpc RemoveTable(RemoveTableRequest) returns (RemoveTableResponse) {
+    option (google.api.http) = {
+      delete: "/api/v1/tables/{table_name}"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Удалить таблицу из репликации"
+      description: "Удаляет таблицу из списка реплицируемых таблиц"
+      tags: "tables"
+    };
+  }
+
+  // ListTables возвращает список реплицируемых таблиц
+  rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/tables"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить список реплицируемых таблиц"
+      description: "Возвращает список всех таблиц, которые в данный момент реплицируются"
+      tags: "tables"
+    };
+  }
+
+  // UpdateKafkaConfig обновляет конфигурацию Kafka
+  rpc UpdateKafkaConfig(UpdateKafkaConfigRequest) returns (UpdateKafkaConfigResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/kafka"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Обновить конфигурацию Kafka"
+      description: "Обновляет настройки подключения к Kafka"
+      tags: "kafka"
+    };
+  }
+
+  // UpdateTableMapping обновляет маппинг таблиц на топики Kafka
+  rpc UpdateTableMapping(UpdateTableMappingRequest) returns (UpdateTableMappingResponse) {
+    option (google.api.http) = {
+      put: "/api/v1/tables/mapping"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Обновить маппинг таблиц"
+      description: "Обновляет соответствие между таблицами PostgreSQL и топиками Kafka"
+      tags: "tables"
+    };
+  }
+
+  // GetStatus возвращает текущий статус репликации
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/status"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Получить статус репликации"
+      description: "Возвращает информацию о текущем статусе репликации для всех таблиц"
+      tags: "status"
+    };
+  }
+}
+
+// Модель конфигурации сервиса
+message ServiceConfig {
+  uint32 metrics_port = 1;
+}
+
+// Модель конфигурации базы данных
+message DatabaseConfig {
+  string driver_name = 1;
+  string host = 2;
+  uint32 port = 3;
+  string user = 4;
+  string password = 5;
+  string database = 6;
+  string ping_timeout = 7; // в формате времени Go, например "10s"
+  string ping_period = 8;  // в формате времени Go, например "1s"
+}
+
+// Модель конфигурации Kafka
+message KafkaConfig {
+  string driver_name = 1;
+  map<string, string> table_channel = 2;
+  repeated string brokers = 3;
+}
+
+// Модель схемы таблиц
+message SchemaConfig {
+  repeated string tables = 1;
+}
+
+// Модель конфигурации продюсера
+message ProducerConfig {
+  string period = 1;       // в формате времени Go, например "5s"
+  bool stop_on_error = 2;
+  bool enable_dlq = 3;
+}
+
+// Модель конфигурации консьюмера
+message ConsumerConfig {
+  string max_batch_wait = 1; // в формате времени Go, например "5s"
+  int32 max_tasks_batch = 2;
+  bool stop_on_error = 3;
+  bool enable_dlq = 4;
+}
+
+// Полная модель конфигурации
+message StahlConfig {
+  ServiceConfig service = 1;
+  DatabaseConfig db = 2;
+  KafkaConfig kafka = 3;
+  SchemaConfig schema = 4;
+  ProducerConfig producer = 5;
+  ConsumerConfig consumer = 6;
+}
+
+// Информация о статусе таблицы
+message TableStatus {
+  string table_name = 1;
+  string changelog_table = 2;
+  uint64 processed_events = 3;
+  uint64 pending_events = 4;
+  string last_processed_at = 5;
+}
+
+// Запросы и ответы
+
+message GetConfigRequest {}
+
+message GetConfigResponse {
+  StahlConfig config = 1;
+}
+
+message UpdateConfigRequest {
+  StahlConfig config = 1;
+}
+
+message UpdateConfigResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message AddTableRequest {
+  string table_name = 1;
+  string kafka_topic = 2; // Топик Kafka для новой таблицы
+}
+
+message AddTableResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveTableRequest {
+  string table_name = 1;
+}
+
+message RemoveTableResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListTablesRequest {}
+
+message ListTablesResponse {
+  repeated string tables = 1;
+  map<string, string> table_mapping = 2; // Маппинг таблиц на топики Kafka
+}
+
+message UpdateKafkaConfigRequest {
+  KafkaConfig kafka_config = 1;
+}
+
+message UpdateKafkaConfigResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateTableMappingRequest {
+  map<string, string> table_mapping = 1;
+}
+
+message UpdateTableMappingResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  repeated TableStatus table_statuses = 1;
+  string replication_running_since = 2;
+}

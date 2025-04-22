@@ -7,11 +7,11 @@ drivers:
   # host database driver config
   db:
     driver_name: "postgresql" # "postgres" / "pg" / "postgre"
-    host: "postgres"
+    host: "postgres_container"
     port: 5432
-    user: "postgres"
-    password: "postgres"
-    database: "postgres"
+    user: "stahl_user"
+    password: "stahl_password"
+    database: "stahl_test_db"
     ping_timeout: 10s
     ping_period: 1s
 
@@ -22,7 +22,7 @@ drivers:
       users: "user_events"
       # do not override orders
       # need to create topics: user_events, orders
-    brokers: ["host.docker.internal:9092"]
+    brokers: ["kafka1:9092"]
 
 
 schema:
